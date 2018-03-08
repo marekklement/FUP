@@ -1,0 +1,101 @@
+(define get-maze
+'(
+(w w w w w w)
+(w 0 w 0 w w)
+(w 0 w 0 0 w)
+(w 0 0 0 w w)
+(w w w w w w)
+)
+)
+(define right-hand-rule-prg
+  '(
+    (procedure start
+      ( turn-right
+        (if wall?
+           ( turn-left
+             (if wall?
+                 (turn-left
+                     (if wall?
+                        turn-left
+                        step
+                     )
+                 )
+                 step
+              )
+           )
+           step  
+        )
+        put-mark
+        start
+      )
+    )   
+    (procedure turn-right (turn-left turn-left turn-left))
+  )
+)
+
+;************************************************************
+;************************************************************
+;**********************Program*******************************
+;************************************************************
+;************************************************************
+
+;////////////////////////////////////////////////////////////
+;---------Finds position x/y in maze------------------------
+;////////////////////////////////////////////////////////////
+;---------Gets current list in maze
+(define (get-current-maze-list row rowc maze)
+  (cond
+    ((= rowc row) (car maze))
+    (#t (get-current-maze-list row (+ rowc 1) (cdr maze)))))
+    
+;---------Gets current attribute in given list (maze)
+(define (get-current-list-att col colc list)
+  (cond
+    ((= colc col) (car list))
+    (#t (get-current-list-att col (+ colc 1) (cdr list)))))
+
+;---------Finds it by given x/y (shorten function)
+(define (find-position x y)
+  (get-current-list-att y 1 (get-current-maze-list x 1 get-maze)))
+
+;//////////////////////////////////////////////////////////
+;<<<<<<<<<Functions for locating what I am facing>>>>>>>>>>
+;//////////////////////////////////////////////////////////
+
+;---------Define arguments sites
+(define north 1)
+(define west 2)
+(define south 3)
+(define east 4)
+
+;--------Is it north?
+(define (north? where)
+  (cond
+    ((= where north) #t)
+    (#t #f)))
+
+;--------Is it south?
+(define (south? where)
+  (cond
+    ((= where south) #t)
+    (#t #f)))
+
+;--------Is it west?
+(define (west? where)
+  (cond
+    ((= where west) #t)
+    (#t #f)))
+
+;--------Is it east?
+(define (east? where)
+  (cond
+    ((= where east) #t)
+    (#t #f)))
+
+;************************************************************
+;************************************************************
+;**********************Actual Procedure**********************
+;************************************************************
+;************************************************************
+(define (actual-procedure maze processes)
+  (
