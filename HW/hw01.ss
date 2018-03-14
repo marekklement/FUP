@@ -1,42 +1,3 @@
-(define get-maze
-'(
-(w w w w w w)
-(w 2 w 0 w w)
-(w 0 w 0 0 w)
-(w 0 0 1 w w)
-(w w w w w w)
-)
-)
-(define right-hand-rule-prg
-  '(
-    (procedure start
-      ( turn-right
-        (if wall?
-           ( turn-left
-             (if wall?
-                 (turn-left
-                     (if wall?
-                        turn-left
-                        step
-                     )
-                 )
-                 step
-              )
-           )
-           step  
-        )
-        put-mark
-        start
-      )
-    )   
-    (procedure turn-right (turn-left turn-left turn-left))
-  )
-)
-
-(define state1 (list get-maze (list 1 1) 'south))
-(define state2 (list get-maze (list 2 4) 'north))
-(define state3 (list get-maze (list 3 3) 'north))
-
 ;************************************************************
 ;************************************************************
 ;**********************Program*******************************
@@ -100,8 +61,8 @@
   (cond
     ((norh? facing) (find-position (- x 1) y maze))
     ((south? facing) (find-position (+ x 1) y maze))
-    ((west? facing) (find-position x (+ y 1) maze))
-    ((east? facing) (find-position x (- y 1) maze))
+    ((west? facing) (find-position x (- y 1) maze))
+    ((east? facing) (find-position x (+ y 1) maze))
     (#t 'w)
   ))
 
@@ -154,8 +115,8 @@
     ((wall? state) state)
     ((norh? facing) (list maze (list (- x 1) y) facing))
     ((south? facing) (list maze (list (+ x 1) y) facing))
-    ((west? facing) (list maze (list x (+ y 1)) facing))
-    ((east? facing) (list maze (list x (- y 1)) facing))
+    ((west? facing) (list maze (list x (- y 1)) facing))
+    ((east? facing) (list maze (list x (+ y 1)) facing))
     )
   )
 
@@ -242,10 +203,18 @@
 ;************************************************************
 (define (parse-proc li name)
   (cond
+    ((null? li) '())
     ((eqv? (cadar li) name) (caddar li))
     (#t (parse-proc (cdr li) name))
     )
   )
+
+(define (konec bastard state)
+  (define maze (car state))
+  (define x (caadr state))
+  (define y (cadadr state))
+  (define facing (caddr state))
+  (list bastard (list maze (list y x) facing)))
   
 
 ;************************************************************
@@ -254,20 +223,75 @@
 ;************************************************************
 ;************************************************************
 (define (simulate state expr proc limit)
+  (define maze (car state))
+  (define x (caadr state))
+  (define y (cadadr state))
+  (define facing (caddr state))
   (cond
-    ((list? expr) (simulate-proc state expr proc limit))
-    (#t (simulate-proc state (list expr) proc limit))
+    ((list? expr) (simulate-proc (list maze (list y x) facing) expr proc limit '()))
+    (#t (simulate-proc (list maze (list y x) facing) (list expr) proc limit '()))
     )
 )
-(define (simulate-proc state expr proc limit)
-  (define act (car expr))
-  (display act)
-  (cond
-    ((eqv? act 'turn-left) (simulate-proc (turn-left state) (cdr expr) proc limit))
-    ((eqv? act 'step) (simulate-proc (step state) (cdr expr) proc limit))
-    ((eqv? act 'put-mark) (simulate-proc (put-mark state) (cdr expr) proc limit))
-    ((eqv? act 'get-mark) (simulate-proc (get-mark state) (cdr expr) proc limit))
-    (#t (simulate-proc state (append (parse-proc proc act) (cdr expr)) proc limit))
-    )
-  )
-  
+(define (simulate-proc state expr proc limit bastard)
+  (if (null? expr) (konec bastard state) (let ( ;konec
+  (act (car expr)))
+;(display 'STATE)
+ ; (display "\t")
+ ; (display state)
+ ; (display "\n")
+  ;(display 'EXPR)
+ ; (display "\t")
+;  (display expr)
+;  (display "\n")
+;  (display 'ACT)
+ ; (display "\t")
+;  (display act)
+;  (display "\n")
+                                           ;(display "\n")
+                                           (cond
+    ((< limit 0) (konec bastard state)) ;konec
+    ((null? act) (konec bastard state)) ;konec
+    ((list? act) (if (eqv? (car act) 'if) (cond
+                                             ((eqv? (cadr act) 'wall?)
+                                              (if (wall? state)
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard)))
+                                             ((eqv? (cadr act) 'north?)
+                                              (if (north? state)
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard)))
+                                             ((eqv? (cadr act) 'mark?)
+                                              (if (mark? state)
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard))))
+                                           (simulate-proc state (cdr expr) proc limit bastard)))
+    ((eqv? act 'if) (cond
+                      ((eqv? (cadr expr) 'wall?)
+                       (if (wall? state)
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))
+                      ((eqv? (cadr expr) 'north?)
+                       (if (north? state)
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))
+                      ((eqv? (cadr expr) 'mark?)
+                       (if (mark? state)
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))))
+    ((eqv? act 'BRK) (simulate-proc state (cdr expr) proc (+ limit 1)  bastard))
+    ((eqv? act 'turn-left) (simulate-proc (turn-left state) (cdr expr) proc limit (append bastard '(turn-left))))
+    ((eqv? act 'step) (if (wall? state) (konec bastard state) (simulate-proc (step state) (cdr expr) proc limit (append bastard '(step)))))
+    ((eqv? act 'put-mark) (simulate-proc (put-mark state) (cdr expr) proc limit (append bastard '(put-mark))))
+    ((eqv? act 'get-mark) (if (mark? state) (simulate-proc (get-mark state) (cdr expr) proc limit (append bastard '(get-mark))) (konec bastard state)))
+    (#t (if (null? (parse-proc proc act)) (konec bastard state) (simulate-proc state (append (parse-proc proc act) '(BRK) (cdr expr)) proc (- limit 1) bastard)))
+    )) ;konec
+  ))
+
+
+
+
+
+
+
+
+
