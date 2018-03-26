@@ -204,7 +204,7 @@
 (define (parse-proc li name)
   (cond
     ((null? li) '())
-    ((eqv? (cadar li) name) (caddar li))
+    ((eqv? (cadar li) name) (if (symbol? (caddar li)) (list (caddar li)) (caddar li)))
     (#t (parse-proc (cdr li) name))
     )
   )
@@ -286,12 +286,3 @@
     (#t (if (null? (parse-proc proc act)) (konec bastard state) (simulate-proc state (append (parse-proc proc act) '(BRK) (cdr expr)) proc (- limit 1) bastard)))
     )) ;konec
   ))
-
-
-
-
-
-
-
-
-
