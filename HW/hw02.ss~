@@ -222,19 +222,17 @@
 ;**********************Actual Procedure**********************
 ;************************************************************
 ;************************************************************
-(define (simulate state expr proc limit numOfSteps)
+(define (simulate state expr proc limit)
   (define maze (car state))
   (define x (caadr state))
   (define y (cadadr state))
   (define facing (caddr state))
   (cond
-    ((list? expr) (simulate-proc (list maze (list y x) facing) expr proc limit '() numOfSteps))
-    (#t (simulate-proc (list maze (list y x) facing) (list expr) proc limit '() numOfSteps))
+    ((list? expr) (simulate-proc (list maze (list y x) facing) expr proc limit '()))
+    (#t (simulate-proc (list maze (list y x) facing) (list expr) proc limit '()))
     )
 )
-(define (simulate-proc state expr proc limit bastard numOfSteps)
-  ;(display numOfSteps)
-  ;(display "\n")
+(define (simulate-proc state expr proc limit bastard)
   (if (null? expr) (konec bastard state) (let ( ;konec
   (act (car expr)))
 ;(display 'STATE)
@@ -251,42 +249,41 @@
 ;  (display "\n")
                                            ;(display "\n")
                                            (cond
-    ((= numOfSteps 0) (konec bastard state)) ;konec                                         
     ((< limit 0) (konec bastard state)) ;konec
     ((null? act) (konec bastard state)) ;konec
     ((list? act) (if (eqv? (car act) 'if) (cond
                                              ((eqv? (cadr act) 'wall?)
                                               (if (wall? state)
-                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard numOfSteps)
-                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard numOfSteps)))
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard)))
                                              ((eqv? (cadr act) 'north?)
                                               (if (north? state)
-                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard numOfSteps)
-                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard numOfSteps)))
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard)))
                                              ((eqv? (cadr act) 'mark?)
                                               (if (mark? state)
-                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard numOfSteps)
-                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard numOfSteps))))
-                                           (simulate-proc state (cdr expr) proc limit bastard numOfSteps)))
+                                                  (simulate-proc state (append (if (symbol? (caddr act)) (list (caddr act)) (caddr act)) (cdr expr)) proc limit bastard)
+                                                  (simulate-proc state (append (if (symbol? (cadddr act)) (list (cadddr act)) (cadddr act)) (cdr expr)) proc limit bastard))))
+                                           (simulate-proc state (cdr expr) proc limit bastard)))
     ((eqv? act 'if) (cond
                       ((eqv? (cadr expr) 'wall?)
                        (if (wall? state)
-                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard numOfSteps)
-                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard numOfSteps)))
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))
                       ((eqv? (cadr expr) 'north?)
                        (if (north? state)
-                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard numOfSteps)
-                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard numOfSteps)))
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))
                       ((eqv? (cadr expr) 'mark?)
                        (if (mark? state)
-                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard numOfSteps)
-                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard numOfSteps)))))
-    ((eqv? act 'BRK) (simulate-proc state (cdr expr) proc (+ limit 1)  bastard numOfSteps))
-    ((eqv? act 'turn-left) (simulate-proc (turn-left state) (cdr expr) proc limit (append bastard '(turn-left)) (- numOfSteps 1)))
-    ((eqv? act 'step) (if (wall? state) (konec bastard state) (simulate-proc (step state) (cdr expr) proc limit (append bastard '(step)) (- numOfSteps 1))))
-    ((eqv? act 'put-mark) (simulate-proc (put-mark state) (cdr expr) proc limit (append bastard '(put-mark)) (- numOfSteps 1)))
-    ((eqv? act 'get-mark) (if (mark? state) (simulate-proc (get-mark state) (cdr expr) proc limit (append bastard '(get-mark)) (- numOfSteps 1)) (konec bastard state)))
-    (#t (if (null? (parse-proc proc act)) (konec bastard state) (simulate-proc state (append (parse-proc proc act) '(BRK) (cdr expr)) proc (- limit 1) bastard numOfSteps)))
+                           (simulate-proc state (append (if (symbol? (caddr expr)) (list (caddr expr)) (caddr expr)) (cddddr expr)) proc limit bastard)
+                           (simulate-proc state (append (if (symbol? (cadddr expr)) (list (cadddr expr)) (cadddr expr)) (cddddr expr)) proc limit bastard)))))
+    ((eqv? act 'BRK) (simulate-proc state (cdr expr) proc (+ limit 1)  bastard))
+    ((eqv? act 'turn-left) (simulate-proc (turn-left state) (cdr expr) proc limit (append bastard '(turn-left))))
+    ((eqv? act 'step) (if (wall? state) (konec bastard state) (simulate-proc (step state) (cdr expr) proc limit (append bastard '(step)))))
+    ((eqv? act 'put-mark) (simulate-proc (put-mark state) (cdr expr) proc limit (append bastard '(put-mark))))
+    ((eqv? act 'get-mark) (if (mark? state) (simulate-proc (get-mark state) (cdr expr) proc limit (append bastard '(get-mark))) (konec bastard state)))
+    (#t (if (null? (parse-proc proc act)) (konec bastard state) (simulate-proc state (append (parse-proc proc act) '(BRK) (cdr expr)) proc (- limit 1) bastard)))
     )) ;konec
   ))
 
@@ -312,9 +309,6 @@
         (else (cons (car lst) (underdo (cdr lst))))))
 
 (define (counter-of-words lst counter)
-  ;(display counter)
-  ;(display "\n")
-  ;(display "\n")
   (cond
     ((null? lst) counter)
     ((null? (car lst)) (counter-of-words (cdr lst) counter))
@@ -515,7 +509,7 @@
 (define (eval-pars-p prg pairs thresholds stack_size)
   
   (define programLength (prg-count prg))
-  (define programLengthThreshold (caddr thresholds))
+  (define programLengthThreshold (cadddr thresholds))
 
   (if (> programLength programLengthThreshold) '() 
       (eval-pars-p-len prg pairs thresholds stack_size (list 0 0 programLength 0)))
@@ -526,12 +520,10 @@
 ;<<<<<<<<<<<<<<<<<<<Len function>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
 (define (eval-pars-p-len prg pairs thresholds stack_size thresholds-sum)
-  ;(display (cadddr thresholds))
-  ;(display "\n")
   (cond
     ((null? pairs) thresholds-sum)
     (#t (let* (
-              (simulatedThresholds (evaluate-one prg (car pairs) stack_size (cadddr thresholds)))  
+              (simulatedThresholds (evaluate-one prg (car pairs) stack_size))  
               (thresholdsSum (threshold-all-sum simulatedThresholds thresholds-sum))
               (isThresholdNotOk (is-over-threshold thresholdsSum thresholds))
               )
@@ -547,11 +539,11 @@
 ;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<One evaluation function>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
-(define (evaluate-one prg pair stack_size numStepsBastard)
+(define (evaluate-one prg pair stack_size)
   (let* (
         (desiredState (cadr pair))
         (desiredMaze (car desiredState))
-        (endSimulate (simulate (car pair) 'start prg stack_size numStepsBastard))
+        (endSimulate (simulate (car pair) 'start prg stack_size))
         (endState (cadr endSimulate))
         (endMaze (car endState))
         
@@ -560,21 +552,6 @@
         (programLength (prg-count prg))
         (numOfSteps (length (car endSimulate)))
         )
-        ;(display mazeDifference)
-        ;(display "\n")
-        ;(display "\n")
-        ;(display robotDifference)
-        ;(display "\n")
-        ;(display "\n")
-        ;(display programLength)
-        ;(display "\n")
-        ;(display "\n")
-        ;(display numOfSteps)
-        ;(display "\n")
-        ;(display "\n")
         (list mazeDifference robotDifference 0 numOfSteps)
       )
   )
-;//////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<Tests>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-;//////////////////////////////////////////////////////////
