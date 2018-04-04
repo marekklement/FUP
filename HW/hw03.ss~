@@ -600,41 +600,6 @@
 (define random (congruential-rng 12345))
 
 ;//////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<Rand. func>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-;//////////////////////////////////////////////////////////
-(define (rand-func-get fun)
-  (define rand-num (random 8))
-  (cond
-    ((= rand-num 0) (list fun 'step))
-    ((= rand-num 1) (list fun 'turn-left))
-    ((= rand-num 2)  (list fun 'put-mark))
-    ((= rand-num 3) (list fun 'get-mark))
-    ((= rand-num 4) (list 'step))
-    ((= rand-num 5) (list 'turn-left))
-    ((= rand-num 6) (list 'put-mark))
-    ((= rand-num 7) (list 'get-mark))
-    (#t'())
-    )
-  )
-
-(define (create-proc prg)
-  (define rand-num (random 8))
-  (define first (car prg))
-  (display first)
-  (display "\n")
-  (cond
-    ((or (null? prg) (null? prg)) '())
-    ((eqv? first 'wall?) (create-proc (cdr prg)))
-    ((eqv? first 'mark?) (create-proc (cdr prg)))
-    ((eqv? first 'north?) (create-proc (cdr prg)))
-    ((eqv? first 'if) (create-proc (cdr prg)))
-    ((eqv? first 'start) (create-proc (cdr prg))) ;get rid of
-    ((< rand-num 3) (append (rand-func-get first) (create-proc (cdr prg))))
-    (#t (cons first (create-proc (cdr prg))))
-  )
-)
-
-;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<Evolve fun.>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
 (define (evolve pairs threshold stack_size)
