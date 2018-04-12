@@ -449,7 +449,7 @@
 ;//////////////////////////////////////////////////////////
 (define (first-smaller? li1 li2)
   (cond
-    ((null? li1) (display "error"))
+    ((null? li1) #t)
     ((> (car li1) (car li2)) #f)
     ((= (car li1) (car li2)) (first-smaller? (cdr li1) (cdr li2)))
     (#t #t)
@@ -600,6 +600,161 @@
 (define random (congruential-rng 12345))
 
 ;//////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<Rand. func>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+;//////////////////////////////////////////////////////////
+(define (rand-func-get fun)
+  (define rand-num (random 9)) ; ;######### CISLO ZMENA - delka programu
+  (cond
+    ((= rand-num 0) (list fun 'step))
+    ((= rand-num 1) (list fun 'turn-left))
+    ((= rand-num 2)  (list fun 'put-mark))
+    ((= rand-num 3) (list fun 'get-mark))
+    ((= rand-num 4) (list 'step))
+    ((= rand-num 5) (list 'turn-left))
+    ((= rand-num 6) (list 'put-mark))
+    ((= rand-num 7) (list 'get-mark))
+    (#t'())
+    )
+  )
+
+(define (create-prog lst)
+  (define rand (random 10));######### CISLO ZMENA - delka programu
+  (cond
+    ((or (= rand 0) (= rand 1)) (create-prog (append lst '(step))))
+    ((or (= rand 2) (= rand 3)) (create-prog (append lst '(turn-left))))
+    ((or (= rand 4) (= rand 5)) (create-prog (append lst '(put-mark))))
+    ((or (= rand 6) (= rand 7)) (create-prog (append lst '(get-mark))))
+    ((< (length lst) 1) (create-prog lst))
+    (#t lst)
+    )
+  )
+
+(define (put-podminka)
+  (define randombr (random 3))
+  (cond
+    ((= randombr 0) '(wall?))
+    ((= randombr 1) '(north?))
+    ((= randombr 2) '(mark?))
+    )
+  )
+
+(define (create-if before all-lst)
+  (cond
+    ((= before 0) (create-if 1 (append all-lst '(if))))
+    ((= before 1) (create-if 2 (append all-lst (put-podminka))))
+    ((= before 2) (create-if 3 (append all-lst (list (create-prog '())))))
+    ((= before 3) (create-if 4 (append all-lst (list (create-prog '())))))
+    (#t all-lst)
+    )
+  )
+
+(define (program-gen lst)
+  (define rdn (random 3)) ;######### CISLO ZMENA - delka programu
+  (cond
+    ((= rdn 0) (program-gen (append lst (list (create-if 0 '())))))
+    ((= rdn 1) (program-gen (append lst (create-prog '()))))
+    ((< (length lst) 1) (program-gen lst))
+    (#t lst)
+    )
+  )
+
+(define (create-prog-schema)
+  (list (append '(procedure start) (list (program-gen '()))))
+  )
+
+(define (create-number-of-starts lst num)
+  (cond
+    ((= num 0) lst)
+    (#t (create-number-of-starts (append lst (list (create-prog-schema))) (- num 1)))
+    )
+  )
+
+(define (select-p programs selected count len)
+  (define rdn (random len))
+  ;(display rdn)
+  ;(newline)
+  (cond
+    ((null? programs) selected)
+    ((>= rdn count) (select-p (cdr programs) (append selected (list (car programs))) (+ count 1) len))
+    (#t (select-p (cdr programs) selected (+ count 1) len))
+    )
+  )
+
+(define (cover mat lim populace)
+  (let* ((len-start (length populace))
+         (evaluated (evaluate populace pairs mat lim))
+         (filtered (select-p evaluated '() 0 (length evaluated)))
+         (len-after (length filtered))
+         (blbci (cut-count filtered '() 1))
+         (populace-after-filtered (create-number-of-starts blbci (- len-start len-after))))
+    populace-after-filtered
+    )
+  )
+
+(define (cut-count generated lst priority)
+  (cond
+    ((= priority 1) (begin (display (car generated))
+                    (newline)
+                    (cut-count (cdr generated) (append lst (list (cadar generated))) 0)))
+    ((null? generated) lst)
+    (#t (cut-count (cdr generated) (append lst (list (cadar generated))) 0))
+    )
+  )
+
+(define (merge-in p1 p2 len1 len2 lst)
+  ;(display p1)
+  ;(newline)
+  ;(display len1)
+  ;(newline)
+  ;(display p2)
+  ;(newline)
+  ;(display len2)
+  ;(newline)
+  ;(display lst)
+  ;(newline)
+  (cond
+    ((> len1 0) (merge-in (cdr p1) p2 (- len1 1) len2 (append lst (list (car p1)))))
+    ((> len2 0) (merge-in p1 (cdr p2) len1 (- len2 1) (append lst (list (car p2)))))
+    (#t lst)
+    )
+  )
+  
+
+(define (merge-p p1 p2)
+  (let* ((len1 (length p1))
+         (len2 (length p2))
+         (hal1 (round (/ len1 2)))
+         (hal2 (round (/ len2 2))))
+    (merge-in p1 p2 hal1 hal2 '())
+    )
+  )
+(define (global-merge-in first others lst)
+  (cond
+    ((null? others) lst)
+    (#t
+     (newline)
+     (display lst)
+     (newline)
+     (global-merge-in first (cdr others) (append lst (merge-p first (car others))))
+     (newline)
+     (display lst)
+     (newline)
+     )
+    )
+  )
+
+(define (global-merge population lst)
+  (cond
+    ((null? population) lst)
+    (#t
+     (newline)
+     (display population)
+     (newline)
+     (global-merge-in (car population) (cdr population) lst))
+    )
+  )
+
+;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<Evolve fun.>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
 (define (evolve pairs threshold stack_size)
@@ -610,3 +765,36 @@
 ;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<Tests>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
+(define pairs
+'(
+  (
+   (((w w w w w w) 
+     (w 0 w 0 w w) 
+     (w 1 w 0 0 w) 
+     (w 1 0 0 w w) 
+     (w w w w w w)) 
+     (1 3) south)
+
+   (((w w w w w w) 
+     (w 0 w 0 w w) 
+     (w 0 w 0 0 w) 
+     (w 0 0 0 w w) 
+     (w w w w w w)) 
+     (1 1) north)
+   )
+   (
+   (((w w w w w w) 
+     (w 0 w 0 w w) 
+     (w 0 w 2 0 w) 
+     (w 1 3 0 w w) 
+     (w w w w w w)) 
+     (3 3) north)
+
+   (((w w w w w w) 
+     (w 0 w 0 w w) 
+     (w 0 w 0 0 w) 
+     (w 0 0 0 w w) 
+     (w w w w w w)) 
+     (1 1) north)
+  ))
+ )

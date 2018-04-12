@@ -449,7 +449,7 @@
 ;//////////////////////////////////////////////////////////
 (define (first-smaller? li1 li2)
   (cond
-    ((null? li1) (display "error"))
+    ((null? li1) #t)
     ((> (car li1) (car li2)) #f)
     ((= (car li1) (car li2)) (first-smaller? (cdr li1) (cdr li2)))
     (#t #t)
@@ -580,7 +580,7 @@
 ;************************************************************
 ;************************************************************
 ;************************************************************
-;*****************Build up on second HW**********************
+;*****************Build up on third HW**********************
 ;************************************************************
 ;************************************************************
 ;************************************************************
@@ -600,48 +600,300 @@
 (define random (congruential-rng 12345))
 
 ;//////////////////////////////////////////////////////////
-;<<<<<<<<<<<<<<<<<<<Rand. func>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+;<<<<<<<<<<<<<<<<<<<Rand. func for mutate>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
 (define (rand-func-get fun)
-  (define rand-num (random 8))
+  (define rand-num (random 28)) ; ;######### CISLO ZMENA - delka programu
   (cond
-    ((= rand-num 0) (list fun 'step))
-    ((= rand-num 1) (list fun 'turn-left))
-    ((= rand-num 2)  (list fun 'put-mark))
-    ((= rand-num 3) (list fun 'get-mark))
-    ((= rand-num 4) (list 'step))
-    ((= rand-num 5) (list 'turn-left))
-    ((= rand-num 6) (list 'put-mark))
-    ((= rand-num 7) (list 'get-mark))
-    (#t'())
+    ((or (= rand-num 1) (= rand-num 0)) (list fun 'step))
+    ((or (= rand-num 2) (= rand-num 17)) (list fun 'turn-left))
+    ((or (= rand-num 3) (= rand-num 16))  (list fun 'put-mark))
+    ((or (= rand-num 4) (= rand-num 15)) (list fun 'get-mark))
+    ((or (= rand-num 8) (= rand-num 19)) (list fun 'start))
+    ((or (= rand-num 5) (= rand-num 14)) (list 'step))
+    ((or (= rand-num 6) (= rand-num 13)) (list 'turn-left))
+    ((or (= rand-num 7) (= rand-num 12)) (list 'put-mark))
+    ((or (= rand-num 9) (= rand-num 11)) (list 'get-mark))
+    ((= rand-num 10) (list 'start))
+    (#t fun)
     )
   )
 
-(define (create-proc prg)
-  (define rand-num (random 8))
-  (define first (car prg))
-  (display first)
-  (display "\n")
+;//////////////////////////////////////////////////////////
+;<<<<<<<<<<<<<<<<<<<Rand. create prog>>>>>>>>>>>>>>>>>>
+;//////////////////////////////////////////////////////////
+(define (create-prog lst)
+  (define rand (random 30));######### CISLO ZMENA - delka programu
   (cond
-    ((or (null? prg) (null? prg)) '())
-    ((eqv? first 'wall?) (create-proc (cdr prg)))
-    ((eqv? first 'mark?) (create-proc (cdr prg)))
-    ((eqv? first 'north?) (create-proc (cdr prg)))
-    ((eqv? first 'if) (create-proc (cdr prg)))
-    ((eqv? first 'start) (create-proc (cdr prg))) ;get rid of
-    ((< rand-num 3) (append (rand-func-get first) (create-proc (cdr prg))))
-    (#t (cons first (create-proc (cdr prg))))
+    ((or (= rand 0) (= rand 1)) (create-prog (append lst '(step))))
+    ((or (= rand 2) (= rand 3)) (create-prog (append lst '(turn-left))))
+    ((or (= rand 4) (= rand 5)) (create-prog (append lst '(put-mark))))
+    ((or (= rand 6) (= rand 7)) (create-prog (append lst '(get-mark))))
+    ((or (= rand 8) (= rand 9)) (create-prog (append lst '(start))))
+    ;((< (length lst) 2) (create-prog lst))
+    (#t lst)
+    )
   )
-)
 
+; ----------- prida podminku do za IF
+(define (put-podminka)
+  (define randombr (random 3))
+  (cond
+    ((= randombr 0) '(wall?))
+    ((= randombr 1) '(north?))
+    ((= randombr 2) '(mark?))
+    )
+  )
+
+; ----------- vytvori IF
+(define (create-if before all-lst)
+  (cond
+    ((= before 0) (create-if 1 (append all-lst '(if))))
+    ((= before 1) (create-if 2 (append all-lst (put-podminka))))
+    ((= before 2) (create-if 3 (append all-lst (list (create-prog '())))))
+    ((= before 3) (create-if 4 (append all-lst (list (create-prog '())))))
+    (#t all-lst)
+    )
+  )
+
+; ----------- vygeneruje program do listu - pridava if nebo normal prikaz
+(define (program-gen lst)
+  (define rdn (random 6)) ;######### CISLO ZMENA - delka programu
+  (cond
+    ((= rdn 0) (program-gen (append lst (list (create-if 0 '())))))
+    ((= rdn 1) (program-gen (append lst (create-prog '()))))
+    ((< (length lst) 2) (program-gen lst))
+    (#t lst)
+    )
+  )
+
+; ----------- Prida programu procedura start
+(define (create-prog-schema)
+  (list (append '(procedure start) (list (program-gen '()))))
+  )
+
+; ----------- Vytvori vice programu, ktere jsou potreba
+(define (create-number-of-starts lst num)
+  (cond
+    ((= num 0) lst)
+    (#t (create-number-of-starts (append lst (list (create-prog-schema))) (- num 1)))
+    )
+  )
+
+; ----------- vybere pseudonahodne na zaklade priorit urcite programy
+(define (select-p programs selected count len)
+  (define rdn (random len))
+  (cond
+    ((null? programs) selected)
+    ((>= rdn (- count 1)) (select-p (cdr programs) (append selected (list (car programs))) (+ count 1) len)) ;########## Zmena vyberu druhu
+    (#t (select-p (cdr programs) selected (+ count 1) len))
+    )
+  )
+
+; ----------- vygeneruje populaci, seradi, vyhodi programy, doplni programy
+(define (cover mat lim populace prs roun)
+  (let* ((len-start (length populace))
+         (evaluated (evaluate populace prs mat lim))
+         (filtered (select-p evaluated '() 0 (length evaluated)))
+         (len-after (length filtered))
+         (blbci (cut-count filtered '() 1 (= (modulo roun 200) 0))) ;########## Zmena tisku 
+         )
+    ;(display (eqv? (caar blbci) 'konec))
+    (cond
+      ((eqv? (caar blbci) 'konec) blbci)
+      (#t (let* ((best (car blbci))
+         (populace-after-filtered (create-number-of-starts blbci (- (- len-start len-after) 1)))
+         (populace-after-merged (global-merge populace-after-filtered '()))
+         (merged-with-best (append populace-after-merged (list best))))
+            merged-with-best
+            ))
+      )
+    )
+  )
+
+; ----------- odrizne vypocte ze zacatku programu
+(define (cut-count generated lst priority roun)
+  ;(define gg (car generated))
+  (cond
+    ((and (= priority 1) roun) (begin (display (car generated)) 
+                    (newline)
+                    (cond
+                      ((first-smaller? (car (car generated)) '(0 0 9999 9999)) (list '(konec) (car generated)))
+                      (#t (cut-count (cdr generated) (append lst (list (cadar generated))) 0 #f)))))
+    ((= priority 1) (cut-count (cdr generated) (append lst (list (cadar generated))) 0 #f)) 
+    ((null? generated) lst)
+    (#t (cut-count (cdr generated) (append lst (list (cadar generated))) 0 #f))
+    )
+  )
+
+; ----------- vnitrni for na zmergovani dvou programu
+(define (merge-in p1 p2 len1 len2 lst)
+  (cond
+    ((> len1 0) (merge-in (cdr p1) p2 (- len1 1) len2 (append lst (list (car p1)))))
+    ((> len2 0) (merge-in p1 (cdr p2) len1 (- len2 1) (append lst (list (car p2)))))
+    (#t lst)
+    )
+  )
+  
+; ----------- zmerguje dva programy
+(define (merge-p p1 p2)
+  (let* ((len1 (length p1))
+         (len2 (length p2))
+         (hal1 (round (/ len1 2)))
+         (hal2 (round (/ len2 2))))
+    (merge-in p1 p2 hal1 hal2 '())
+    )
+  )
+
+; ----------- mutuje nahodne prikazy v programu
+(define (mutate prog newprog)
+  (define rf (random 6)) ;######### CISLO ZMENA - sance na zmenu v programu
+  (cond
+    ((null? prog) newprog)
+    ((<= rf 4) (mutate (cdr prog) newprog))
+    (#t (mutate (cdr prog) (append newprog (rand-func-get (car prog)))))
+    )
+  )
+
+; ----------- vnejsi merge - zmerguje dva programy, pak je zmutuje a pak jim prida procedure start - stale dokoa
+(define (global-merge-in pop first second lst)
+  (cond
+    ((or (null? pop) (= (length pop) 1)) lst)
+    (#t
+     (let* ((kocka (list (merge-p (caddar first) (caddar second))))
+            (osel (list (mutate kocka '())))
+            (pes (list (append '(procedure start) osel))))
+       (cond
+         ((null? (car osel)) (global-merge-in (cddr pop) (car pop) (cadr pop) lst))
+         (#t (global-merge-in (cdr pop) (car pop) (cadr pop) (append lst (list pes))))
+    )
+       )
+  )
+    )
+  )
+  
+; ----------- obal na merge
+(define (global-merge pop lst)
+  (define leng-pop (length pop))
+  (cond
+    ((null? pop) lst)
+    (#t
+     (let* ((new-pop (global-merge-in (cddr pop) (car pop) (cadr pop) '()))
+            (new-len (length new-pop))
+            (populace-after-merged (create-number-of-starts new-pop (- leng-pop new-len)))) ;doplneni populace
+       populace-after-merged
+       )
+     )
+    )
+  )
+
+; ----------- rekurzivni volani
+;(define (recurse-frs prs mat lim)
+ ; (let* ((current (global-merge (cover mat lim (create-number-of-starts '() 200) prs 0) '())) ;######### CISLO ZMENA - NUMBER of programs
+  ;;       (next (cover mat lim current prs 1)))
+  ;  (rekurse mat lim next prs 2)
+  ;  )
+ ; )
+
+; ----------- loop na rekurzi
+;(define (rekurse mat lim pop prs roun)
+ ; (let* ((current (global-merge pop '())) ;NUMBER of programs
+   ;      (next (cover mat lim current prs roun)))
+  ;  (cond
+  ;    ((= roun 301) (rekurse mat lim next prs 0)) ;########## Zmena tisku - musi se ake zmenit - jinak nefacha
+   ;   (#t (rekurse mat lim next prs (+ roun 1)))
+  ;    )
+  ;;  )
+ ; )
+
+(define (evolve-rec prs pop treshold stack_size cnt)
+  (define new-cnt (+ cnt 1))
+  (let* ((evolved (cover treshold stack_size pop prs new-cnt)))
+  (cond
+    ((eqv? (caar evolved) 'konec) (cadr evolved))
+    (#t (evolve-rec prs evolved treshold stack_size new-cnt))
+    )
+  )
+  )
+         
+         
 ;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<Evolve fun.>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
-(define (evolve pairs threshold stack_size)
-  (display pairs)
+(define (evolve prs threshold stack_size)
+  (let* ((first-pop (create-number-of-starts '() 38)))
+    (evolve-rec prs first-pop threshold stack_size 0)
+  )
   )
 
 
 ;//////////////////////////////////////////////////////////
 ;<<<<<<<<<<<<<<<<<<<Tests>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;//////////////////////////////////////////////////////////
+(define s0
+'((
+(w w w)
+(w 1 w)
+(w w w)
+)
+(1 1) south
+))
+
+(define t0
+'((
+(w w w)
+(w 1 w)
+(w w w)
+)
+(1 1) south
+))
+
+(define s1
+'((
+(w w w)
+(w 1 w)
+(w 0 w)
+(w w w)
+)
+(1 1) west
+))
+
+(define t1
+'((
+(w w w)
+(w 1 w)
+(w 0 w)
+(w w w)
+)
+(1 1) west
+))
+
+(define s2
+'((
+(w w w)
+(w 0 w)
+(w 0 w)
+(w 0 w)
+(w 0 w)
+(w 1 w)
+(w 0 w)
+(w 0 w)
+(w w w)
+)
+(1 1) south
+))
+
+(define t2
+'((
+(w w w)
+(w 0 w)
+(w 0 w)
+(w 0 w)
+(w 0 w)
+(w 1 w)
+(w 0 w)
+(w 0 w)
+(w w w)
+)
+(1 7) south
+))
